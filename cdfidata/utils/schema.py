@@ -155,6 +155,11 @@ ILR_URL = "https://data.gov/dataset/data-on-cdfi-program-awardees"
 
 NMTC_URL = "https://www.cdfifund.gov/programs-training/programs/new-markets-tax-credit/allocatees"
 
+LCA_URLS = {
+    2024: "https://www.cdfifund.gov/sites/cdfi/files/2025-01/LCA_Disclosure_Data_FY2024_Q4.xlsx",
+    2025: "https://www.cdfifund.gov/sites/cdfi/files/2025-03/LCA_Disclosure_Data_FY2025_Q2.xlsx",
+}
+
 # ── Cache directory ───────────────────────────────────────────────────────────
 import os
 CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cdfidata", "cache")
