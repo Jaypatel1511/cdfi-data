@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.5] — 2026-05-04
+
+### Added
+- `CHANGELOG.md`
+
 ## [0.1.4] — 2026-05-04
 
 ### Changed
