@@ -62,20 +62,26 @@ require significant cleaning before analysis. cdfi-data standardizes the entire 
 
 ## Datasets Supported
 
-- TLR (Transaction Level Report) — 1M+ individual CDFI loans, 61 variables
-- CLR (Consumer Loan Report) — 3.2M consumer loans aggregated to census tract
-- Awards Database — all CDFI Fund program awardees across all years
+| Dataset | Source | Description |
+|---------|--------|-------------|
+| TLR (Transaction Level Report) | CDFI Fund | 1M+ individual CDFI loans, 61 variables |
+| CLR (Consumer Loan Report) | CDFI Fund | 3.2M consumer loans aggregated to census tract |
+| Awards Database | CDFI Fund | All CDFI Fund program awardees across all years |
+| LCA (Labor Condition Application) | DOL OFLC | H-1B visa filing disclosure data, quarterly |
 
 Coming soon: ILR (Institution Level Report), NMTC Allocatee data
 
 ---
 
-## Data Source
+## Data Sources
 
-All data comes directly from the US Department of Treasury CDFI Fund:
+**CDFI Fund datasets** (TLR, CLR, Awards) come from the US Department of Treasury CDFI Fund:
 https://www.cdfifund.gov/research-data
 
-Data is released annually under open government data principles.
+**LCA datasets** come from the US Department of Labor, Office of Foreign Labor Certification (OFLC):
+https://www.dol.gov/agencies/eta/foreign-labor/performance
+
+All data is released under open government data principles.
 
 ---
 
