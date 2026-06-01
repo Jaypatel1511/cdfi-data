@@ -68,8 +68,6 @@ require significant cleaning before analysis. cdfi-data standardizes the entire 
 | CLR (Consumer Loan Report) | CDFI Fund | 3.2M consumer loans aggregated to census tract |
 | Awards Database | CDFI Fund | All CDFI Fund program awardees across all years |
 
-Coming soon: ILR (Institution Level Report), NMTC Allocatee data
-
 ---
 
 ## Data Sources
