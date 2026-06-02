@@ -9,7 +9,16 @@ from typing import Optional
 from cdfidata.pipeline.downloader import download_tlr, extract_zip, cache_path
 from cdfidata.pipeline.cleaner import standardize
 from cdfidata.pipeline.exporter import to_csv, to_sqlite, to_parquet
-from cdfidata.utils.schema import TLR_COLUMNS, TLR_DTYPES
+from cdfidata.utils.schema import TLR_COLUMNS, TLR_DTYPES, STATE_FIPS
+
+
+def _derive_state(df):
+    """Add a 'state' column from the 2-digit prefix of fips_code (NaN if unmapped)."""
+    if "fips_code" in df.columns:
+        df["state"] = df["fips_code"].str[:2].map(STATE_FIPS)
+    else:
+        df["state"] = pd.NA
+    return df
 
 
 class TLRLoader:
@@ -26,13 +35,15 @@ class TLRLoader:
         self._df: Optional[pd.DataFrame] = None
         self._year: Optional[int] = None
 
-    def load(self, year: int = 2022, force: bool = False) -> pd.DataFrame:
+    def load(self, year: int = 2022, force: bool = False,
+             url: Optional[str] = None) -> pd.DataFrame:
         """
         Download and load TLR data for a given fiscal year.
 
         Args:
             year:  Fiscal year e.g. 2022
             force: Re-download even if cached
+            url:   Optional explicit URL passed through to download_tlr.
 
         Returns:
             Clean pandas DataFrame with standardized columns
@@ -40,7 +51,7 @@ class TLRLoader:
         self._year = year
 
         # Download zip
-        zip_path = download_tlr(year, force=force)
+        zip_path = download_tlr(year, force=force, url=url)
 
         # Extract
         extracted = extract_zip(zip_path)
@@ -60,11 +71,17 @@ class TLRLoader:
         csv_path = tlr_files[0]
         print(f"Loading TLR data from {csv_path}...")
 
-        df = pd.read_csv(csv_path, dtype=str, low_memory=False)
+        try:
+            df = pd.read_csv(csv_path, dtype=str, low_memory=False)
+        except UnicodeDecodeError:
+            df = pd.read_csv(csv_path, dtype=str, low_memory=False,
+                             encoding="latin-1")
         print(f"Raw records: {len(df):,}")
 
         df = standardize(df, TLR_COLUMNS, TLR_DTYPES,
                          required_cols=["amount"])
+
+        df = _derive_state(df)
 
         print(f"Clean records: {len(df):,}")
         self._df = df
@@ -80,6 +97,9 @@ class TLRLoader:
 
         Returns:
             Synthetic DataFrame with TLR schema
+
+        NOTE: illustrative synthetic data only. Its schema does NOT match the real TLR schema
+        returned by load(); schema reconciliation is tracked for 0.2.1.
         """
         import numpy as np
         import random
@@ -124,10 +144,11 @@ class TLRLoader:
         return self._df[self._df["state"] == state.upper()].copy()
 
     def filter_loan_type(self, loan_type: str) -> pd.DataFrame:
-        """Filter by loan type (partial match)."""
+        """Filter by partial match on transaction_type (real schema) or loan_type (sample)."""
         self._check_loaded()
+        col = "transaction_type" if "transaction_type" in self._df.columns else "loan_type"
         return self._df[
-            self._df["loan_type"].str.contains(loan_type, case=False, na=False)
+            self._df[col].str.contains(loan_type, case=False, na=False)
         ].copy()
 
     def filter_amount(self, min_amount: float = 0,

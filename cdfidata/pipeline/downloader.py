@@ -9,6 +9,10 @@ from pathlib import Path
 
 from cdfidata.utils.schema import CACHE_DIR, TLR_URLS
 
+DEFAULT_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; cdfidata; +https://github.com/Jaypatel1511/cdfi-data)"
+}
+
 
 def get_cache_dir() -> Path:
     """Return and create the local cache directory."""
@@ -48,7 +52,7 @@ def download_file(url: str, filename: str, force: bool = False) -> Path:
     print(f"Downloading {filename}...")
     print(f"URL: {url}")
 
-    response = requests.get(url, stream=True, timeout=120)
+    response = requests.get(url, stream=True, timeout=120, headers=DEFAULT_HEADERS)
     response.raise_for_status()
 
     total = int(response.headers.get("content-length", 0))
@@ -87,25 +91,28 @@ def extract_zip(zip_path: Path, extract_to: Path = None) -> list:
     return [extract_to / name for name in names]
 
 
-def download_tlr(year: int, force: bool = False) -> Path:
+def download_tlr(year: int, force: bool = False, url: str = None) -> Path:
     """
     Download TLR/CLR zip file for a given fiscal year.
 
     Args:
         year:  Fiscal year e.g. 2022
         force: Re-download even if cached
+        url:   Optional explicit URL. If provided, it is used directly and the
+               TLR_URLS lookup is skipped. If None, falls back to TLR_URLS[year].
 
     Returns:
         Path to the downloaded zip file
     """
-    if year not in TLR_URLS:
-        available = list(TLR_URLS.keys())
-        raise ValueError(
-            f"No TLR URL available for FY{year}. "
-            f"Available years: {available}"
-        )
+    if url is None:
+        if year not in TLR_URLS:
+            available = list(TLR_URLS.keys())
+            raise ValueError(
+                f"No TLR URL available for FY{year}. "
+                f"Available years: {available}"
+            )
+        url = TLR_URLS[year]
 
-    url = TLR_URLS[year]
     filename = f"TLR_CLR_FY{year}.zip"
     return download_file(url, filename, force=force)
 

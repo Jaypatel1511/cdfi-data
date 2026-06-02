@@ -84,7 +84,13 @@ def clean_strings(df: pd.DataFrame, cols: list = None) -> pd.DataFrame:
 
 
 def drop_empty_rows(df: pd.DataFrame, required_cols: list) -> pd.DataFrame:
-    """Drop rows where all required columns are null."""
+    """Drop rows where all required columns are null; raise if a required column is missing."""
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise ValueError(
+            f"Required column(s) {missing} not found after standardization; "
+            f"the source schema may have changed. Got columns: {list(df.columns)}"
+        )
     return df.dropna(subset=required_cols, how="all")
 
 
