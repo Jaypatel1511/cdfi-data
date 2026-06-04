@@ -95,7 +95,7 @@ All data is released under open government data principles.
 
     PYTHONPATH=. pytest tests/ -v
 
-30 tests across all modules.
+44 tests across all modules.
 
 ---
 

@@ -28,6 +28,13 @@ In addition to the 61 canonical columns, `load()` adds two provenance columns:
 
 **Output is 63 columns: 61 canonical + 2 provenance (`source_release`, `state`).**
 
+## Known data caveats
+
+- **`transaction_id` is NOT a unique key** — not even within a single release. Duplicate
+  `transaction_id` values are present in the source data (observed: ~307 in FY2020, ~270 in
+  FY2021, 0 in FY2022). Do not use `transaction_id` as a join, merge, or dedup key; treat it
+  as a non-unique identifier only.
+
 ## Canonical mapping table
 
 One row per canonical column. "AMIS source header" is the key in `TLR_COLUMNS` (FY2022);

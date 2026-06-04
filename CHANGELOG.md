@@ -15,6 +15,8 @@
 - ACPR FY2020/FY2021 FIPS leading-zero recovery: fips_code zero-padded to 11; derived state corrected.
 - Documented not-reported codes nulled to NaN, field-specifically: interest_rate 99, term_months 999,
   points 99, naics_code 999999. (points 100 left as-is — see docs/CANONICAL_SCHEMA.md.)
+- summary() is now multi-release-aware (per-source_release breakdown + overlap caveat instead of a
+  misleading cross-release total).
 
 ### Notes
 - Releases overlap on fiscal_year — FY2022 (AMIS) restates/expands prior-year (FY2021) data;

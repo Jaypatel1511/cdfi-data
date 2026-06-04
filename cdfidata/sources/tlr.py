@@ -173,10 +173,12 @@ class TLRLoader:
             n: Number of sample records
 
         Returns:
-            Synthetic DataFrame with TLR schema
+            Synthetic DataFrame with the legacy sample schema
 
-        NOTE: illustrative synthetic data only. Its schema does NOT match the real TLR schema
-        returned by load(); schema reconciliation is tracked for 0.2.1.
+        NOTE: load_sample is a LEGACY SYNTHETIC FIXTURE. Its schema does NOT match the real
+        63-column output of load()/load_cumulative() (which return the unified canonical TLR
+        schema + provenance). It exists only for offline demos/tests; real analysis should use
+        load()/load_cumulative().
         """
         import numpy as np
         import random
@@ -237,19 +239,54 @@ class TLRLoader:
             (self._df["amount"] <= max_amount)
         ].copy()
 
+    def _release_breakdown(self, df) -> pd.DataFrame:
+        """Per-source_release records + total amount.
+
+        Uses the SAME amount column summary() reports on. Per-release amounts are safe;
+        the double-count footgun only arises from summing ACROSS overlapping releases.
+        """
+        g = df.groupby("source_release", dropna=False)
+        return pd.DataFrame({
+            "records": g.size(),
+            "total_amount": g["amount"].sum(),
+        })
+
     def summary(self) -> pd.DataFrame:
-        """Return a summary of the loaded TLR data."""
+        """Return a summary of the loaded TLR data.
+
+        Multi-release-aware: after load_cumulative()/load_range() the stored frame stacks
+        overlapping releases (same fiscal_year restated across vintages), so a single
+        cross-release "Total amount" double-counts restated rows. In that case summary()
+        prints a per-source_release breakdown plus an overlap caveat instead of a misleading
+        grand total. Single-release/single-year loads are unchanged.
+        """
         self._check_loaded()
         df = self._df
-        print(f"\nTLR Data Summary — FY{self._year}")
+        multi = "source_release" in df.columns and df["source_release"].nunique() > 1
+
+        if not multi:
+            print(f"\nTLR Data Summary — FY{self._year}")
+            print(f"  Total records:      {len(df):,}")
+            print(f"  Total amount:       ${df['amount'].sum()/1e9:.2f}B")
+            print(f"  Median loan size:   ${df['amount'].median():,.0f}")
+            print(f"  States covered:     {df['state'].nunique()}")
+            if "jobs_created" in df.columns:
+                print(f"  Total jobs created: {df['jobs_created'].sum():,.0f}")
+            print()
+            return df.describe()
+
+        breakdown = self._release_breakdown(df)
+        releases = list(breakdown.index)
+        print(f"\nTLR Data Summary — {len(releases)} releases ({', '.join(map(str, releases))})")
+        print("  CAVEAT: releases overlap on fiscal_year; cross-release totals are NOT additive")
+        print("  (restated years double-counted) — filter by source_release for a single-vintage total.")
         print(f"  Total records:      {len(df):,}")
-        print(f"  Total amount:       ${df['amount'].sum()/1e9:.2f}B")
-        print(f"  Median loan size:   ${df['amount'].median():,.0f}")
-        print(f"  States covered:     {df['state'].nunique()}")
-        if "jobs_created" in df.columns:
-            print(f"  Total jobs created: {df['jobs_created'].sum():,.0f}")
+        print("  Per source_release:")
+        for rel, row in breakdown.iterrows():
+            print(f"    {rel}:  {int(row['records']):,} records,  "
+                  f"${row['total_amount']/1e9:.2f}B")
         print()
-        return df.describe()
+        return breakdown
 
     def to_csv(self, path: str) -> None:
         self._check_loaded()

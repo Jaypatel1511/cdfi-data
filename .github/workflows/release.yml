@@ -118,6 +118,7 @@ jobs:
       - name: Run test suite against installed wheel
         run: |
           /tmp/wheel_test_venv/bin/pytest tests/ \
+            -m "not live" \
             -v --tb=short \
             --no-header \
             --import-mode=importlib

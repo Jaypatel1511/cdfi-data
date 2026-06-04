@@ -16,12 +16,21 @@ def test_load_sample_returns_dataframe():
     assert len(df) == 100
 
 
-def test_load_sample_has_required_columns():
+def test_load_sample_legacy_synthetic_schema():
+    """Legacy coverage: load_sample is a SYNTHETIC fixture whose schema does NOT match
+    load()/load_cumulative()'s real 63-column canonical output. This asserts the columns the
+    synthetic fixture actually emits (e.g. loan_type/program — fields that do not exist in the
+    real TLR schema), purely to pin the fixture's shape. Do not read this as the real schema."""
     loader = TLRLoader()
     df = loader.load_sample(n=100)
-    required = ["fiscal_year", "amount", "state", "loan_type", "purpose"]
-    for col in required:
-        assert col in df.columns
+    # columns load_sample ACTUALLY returns (legacy synthetic fixture, not the real schema)
+    expected = [
+        "fiscal_year", "award_number", "financing_type", "loan_type", "purpose",
+        "amount", "term_months", "interest_rate", "state", "census_tract",
+        "low_income_area", "distressed_area", "minority_borrower", "women_borrower",
+        "jobs_created", "jobs_retained", "program",
+    ]
+    assert list(df.columns) == expected
 
 
 def test_load_sample_amounts_positive():
@@ -59,6 +68,48 @@ def test_not_loaded_raises():
 
 def test_summary_runs(tlr_loader):
     tlr_loader.summary()
+
+
+def test_summary_multi_release_caveats(capsys):
+    """H1: with >1 source_release and overlapping fiscal_year, summary() emits the overlap
+    caveat + a per-release breakdown, and does NOT print a single cross-release grand total."""
+    loader = TLRLoader()
+    loader._df = pd.DataFrame({
+        "source_release": ["FY2020", "FY2020", "FY2021", "FY2021"],
+        "fiscal_year":    [2020, 2020, 2020, 2021],   # 2020 overlaps across releases
+        "amount":         [100.0, 200.0, 150.0, 250.0],
+        "state":          ["IL", "NY", "IL", "CA"],
+    })
+    loader._year = None
+    loader.summary()
+    out = capsys.readouterr().out
+
+    # overlap caveat present
+    assert "overlap" in out.lower()
+    assert "not additive" in out.lower() or "NOT additive" in out
+    # a per-release line for EACH release
+    assert "FY2020" in out and "FY2021" in out
+    # the footgun single cross-release dollar total is gone
+    assert "Total amount:" not in out
+
+
+def test_summary_single_release_unchanged(capsys):
+    """Regression guard: a single source_release uses the existing single-header format
+    (Total amount line present, no overlap caveat)."""
+    loader = TLRLoader()
+    loader._df = pd.DataFrame({
+        "source_release": ["FY2022", "FY2022", "FY2022"],
+        "fiscal_year":    [2022, 2022, 2022],
+        "amount":         [100.0, 200.0, 300.0],
+        "state":          ["IL", "NY", "CA"],
+    })
+    loader._year = 2022
+    loader.summary()
+    out = capsys.readouterr().out
+
+    assert "TLR Data Summary — FY2022" in out
+    assert "Total amount:" in out
+    assert "caveat" not in out.lower()
 
 
 def test_to_csv(tlr_loader, tmp_path):
