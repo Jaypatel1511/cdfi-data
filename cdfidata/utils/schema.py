@@ -33,7 +33,7 @@ TLR_COLUMNS = {
     "COMMUNITY_FACILITY__C": "community_facility",
     "DESC_OF_OTHER_APPROVED_OTP_END_U": "desc_other_otp_end_use",
     "FORGIVABLE_LOAN__C": "forgivable_loan",
-    "NAICS_NAME": "naics_name",
+    "NAICS_NAME": "naics_code",
     "DATE_BUSINESS_ESTABLISHED__C": "date_business_established",
     "ENTITY_STRUCTURE__C": "entity_structure",
     "MINORITY_OWNED_OR_CONTROLLED__C": "minority_owned",
@@ -73,6 +73,71 @@ TLR_COLUMNS = {
     "AWARDCATEGORY": "award_category",
 }
 
+# Keys are the real ACPR headers (FY2020/FY2021) UPPERCASED, because normalize_columns
+# uppercases headers before matching.
+ACPR_COLUMNS = {
+    "ORG_ID": "org_id",
+    "TRANS_ID": "transaction_id",
+    "FISCALYEAR": "fiscal_year",
+    "ORIGINALAMOUNT": "amount",
+    "PROJECTFIPSCODE_2010": "fips_code",
+    "INVESTEETYPE": "investee_type",
+    "DATECLOSED": "date_originated",
+    "PURPOSE": "purpose",
+    "TRANSACTIONTYPE": "transaction_type",
+    "ORIGINALINTERESTRATE": "interest_rate",
+    "INTERESTTYPE": "interest_type",
+    "POINTS": "points",
+    "ORIGINATIONFEES": "origination_fees",
+    "AMORTIZATIONTYPE": "amortization_type",
+    "EQUITYLIKEFEATURES": "equity_like_features",
+    "ORIGINALTERM": "term_months",
+    "GUARANTEE": "guarantee",
+    "JOBTYPE": "type_of_jobs_reported",
+    "JOBSOURCE": "source_of_job_estimates",
+    "JOBSOURCEOTHER": "source_of_job_estimates_other",
+    "COMMUNITYFACILITY": "community_facility",
+    "DESCOFOTHEROTPENDUSERS": "desc_other_otp_end_use",
+    "FORGIVABLELOAN": "forgivable_loan",
+    "NAICSCODE": "naics_code",
+    "DATEBUSINESSESTABLISHED": "date_business_established",
+    "ENTITYSTRUCTURE": "entity_structure",
+    "MINORITYOWNEDORCONTROLLED": "minority_owned",
+    "WOMENOWNEDORCONTROLLED": "women_owned",
+    "DESCOFOTHEROTP": "description_other_approved",
+    "LOWINCOMEOWNEDORCONTROLLED": "low_income_owned",
+    "LOWINCOMESTATUS": "low_income_status",
+    "OTHERTARGETEDPOPULATIONS": "other_targeted_populations",
+    "LITPENDUSERS": "litp_end_users",
+    "OTPENDUSERS": "otp_end_users",
+    "IAENDUSERS": "ia_end_users",
+    "GENDER": "gender",
+    "RACE": "race",
+    "HISPANICORIGIN": "hispanic_origin",
+    "FEMALEHEADEDHOUSEHOLD": "female_headed_household",
+    "FIRSTTIMEHOMEBUYER": "first_time_home_buyer",
+    "EDUCATIONFACILITY": "capacity_educational",
+    "CHILDCAREFACILITY": "capacity_childcare",
+    "HEALTHCAREFACILITY": "capacity_healthcare",
+    "ARTSCENTERFACILITY": "capacity_arts_center",
+    "OTHERFACILITY": "capacity_other_facility",
+    "AREAREALESTATETOTAL": "sqft_total",
+    "SQFREMANUFACTURE": "sqft_manufacturing",
+    "SQFREOFFICE": "sqft_office",
+    "SQFRERETAIL": "sqft_retail",
+    "AFFORDABLEHOUSESALE": "affordable_units_sale",
+    "AFFORDABLEHOUSERENT": "affordable_units_rental",
+    "LOANCLOSEDSTATUS": "loan_status",
+    "BANKEDATTIMEOFINTAKE": "banked_at_intake",
+    "ANNUALGROSSREVENUE": "annual_gross_revenue",
+    "TOTALPROJECTCOST": "total_project_cost",
+    "PROJECTEDJOBSBUSINESS": "proj_perm_jobs_financed",
+    "PROJECTEDFTETENANTS": "proj_perm_jobs_tenant",
+    "PROJECTEDJOBSCONSTRUCTION": "projected_jobs_construction",
+    "HOUSINGUNITSSALE": "housing_units_sale",
+    "HOUSINGUNITSRENT": "housing_units_rental",
+}
+
 # fips_code is intentionally NOT cast, to preserve leading zeros; demographics stay
 # categorical strings, not bools.
 TLR_DTYPES = {
@@ -95,6 +160,43 @@ TLR_DTYPES = {
     "proj_perm_jobs_financed": "float",
     "proj_perm_jobs_tenant": "float",
     "projected_jobs_construction": "float",
+    "capacity_educational": "float",
+    "capacity_childcare": "float",
+    "capacity_healthcare": "float",
+    "capacity_arts_center": "float",
+    "capacity_other_facility": "float",
+}
+
+# Year → column map selector and the single-source-of-truth canonical column order.
+TLR_COLUMNS_BY_YEAR = {2020: ACPR_COLUMNS, 2021: ACPR_COLUMNS, 2022: TLR_COLUMNS}
+
+TLR_CANONICAL = [
+    "org_id", "transaction_id", "fiscal_year", "amount", "fips_code", "investee_type",
+    "date_originated", "purpose", "transaction_type", "interest_rate", "interest_type", "points",
+    "origination_fees", "amortization_type", "equity_like_features", "term_months", "guarantee",
+    "type_of_jobs_reported", "source_of_job_estimates", "source_of_job_estimates_other",
+    "community_facility", "desc_other_otp_end_use", "forgivable_loan", "naics_code",
+    "date_business_established", "entity_structure", "minority_owned", "women_owned",
+    "description_other_approved", "low_income_owned", "low_income_status", "other_targeted_populations",
+    "litp_end_users", "otp_end_users", "ia_end_users", "gender", "race", "hispanic_origin",
+    "female_headed_household", "first_time_home_buyer", "capacity_educational", "capacity_childcare",
+    "capacity_healthcare", "capacity_arts_center", "capacity_other_facility", "sqft_total",
+    "sqft_manufacturing", "sqft_office", "sqft_retail", "affordable_units_sale", "affordable_units_rental",
+    "loan_status", "banked_at_intake", "annual_gross_revenue", "total_project_cost",
+    "proj_perm_jobs_financed", "proj_perm_jobs_tenant", "projected_jobs_construction",
+    "housing_units_sale", "housing_units_rental", "award_category",
+]   # 61 columns
+
+# Field-specific CDFI Fund "not reported / not applicable" codes, keyed by CANONICAL
+# column name. Sourced from the TLR Data Point Guidance (Feb 2022). ONLY codes the
+# codebook documents as not-reported go here; range bounds and conditional/copy-field
+# sentinels are intentionally excluded (documented-caveat-only this release).
+TLR_SENTINELS = {
+    "interest_rate": {99},      # col I: "if unknown/NA, enter 99"
+    "term_months":   {999},     # col O: "if unknown/NA, enter 999"
+    "points":        {99},      # col K: "if unknown/NA, enter 99"
+                                #   NOTE: 100 is the range ceiling (0–100), NOT a code — do NOT null 100
+    "naics_code":    {999999},  # col U: "if unknown/NA, enter 999999"
 }
 
 # ── CLR (Consumer Loan Report) ────────────────────────────────────────────────
@@ -194,6 +296,8 @@ AWARDS_DTYPES = {
 CDFI_FUND_BASE = "https://www.cdfifund.gov"
 
 TLR_URLS = {
+    2020: "https://www.cdfifund.gov/system/files/2022-06/FY2020_Data_Documentation_Instruction.zip",
+    2021: "https://www.cdfifund.gov/system/files/2023-07/FY2021_Data_Documentation_Instruction.zip",
     2022: "https://www.cdfifund.gov/media/8016726/download?inline",
 }
 

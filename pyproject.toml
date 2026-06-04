@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cdfidata"
-version = "0.2.0"
+version = "0.3.0"
 description = "ETL pipeline for US Treasury CDFI Fund public datasets — TLR, CLR, and Awards data"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -20,3 +20,6 @@ parquet = ["pyarrow>=7.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/Jaypatel1511/cdfi-data"
+
+[tool.pytest.ini_options]
+markers = ["live: hits live CDFI Fund endpoints (deselect with -m 'not live')"]

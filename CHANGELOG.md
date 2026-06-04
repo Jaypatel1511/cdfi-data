@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.3.0] — 2026-06-03
+
+### Added
+- load_cumulative() and load_range(start, end): cumulative TLR for the AMIS era (FY2020–FY2022),
+  stacked with provenance, NO dedup.
+- source_release and state provenance columns on all loads (output now 63 cols: 61 canonical + 2).
+- docs/CANONICAL_SCHEMA.md.
+
+### Changed — single-year load() output (affects existing load(year=...))
+- Unified 61-column canonical schema across both export eras.
+- naics_name → naics_code (renamed; holds 6-digit NAICS codes, not names).
+- capacity_* (×5) now numeric (float).
+- ACPR FY2020/FY2021 FIPS leading-zero recovery: fips_code zero-padded to 11; derived state corrected.
+- Documented not-reported codes nulled to NaN, field-specifically: interest_rate 99, term_months 999,
+  points 99, naics_code 999999. (points 100 left as-is — see docs/CANONICAL_SCHEMA.md.)
+
+### Notes
+- Releases overlap on fiscal_year — FY2022 (AMIS) restates/expands prior-year (FY2021) data;
+  fiscal_year is NOT a dedup key across releases.
+- Field completeness is era-dependent (rate/term/NAICS especially). Prefer filtering by source_release;
+  do not naively aggregate the full cumulative frame.
+- fiscal_year is the CDFI Fund "TLR Submission Year" (name kept, caveat documented).
+
 ## 0.2.0 — 2026-06-01
 
 - Added: browser User-Agent on downloads (defensive against CDN configs that reject default agents).

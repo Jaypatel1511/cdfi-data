@@ -2,6 +2,7 @@
 TLR (Transaction Level Report) data loader.
 Downloads, cleans, and returns CDFI Fund transaction-level loan data.
 """
+import numpy as np
 import pandas as pd
 from pathlib import Path
 from typing import Optional
@@ -9,15 +10,52 @@ from typing import Optional
 from cdfidata.pipeline.downloader import download_tlr, extract_zip, cache_path
 from cdfidata.pipeline.cleaner import standardize
 from cdfidata.pipeline.exporter import to_csv, to_sqlite, to_parquet
-from cdfidata.utils.schema import TLR_COLUMNS, TLR_DTYPES, STATE_FIPS
+from cdfidata.utils.schema import (
+    TLR_COLUMNS, TLR_DTYPES, STATE_FIPS,
+    ACPR_COLUMNS, TLR_COLUMNS_BY_YEAR, TLR_CANONICAL, TLR_URLS, TLR_SENTINELS,
+)
 
 
 def _derive_state(df):
-    """Add a 'state' column from the 2-digit prefix of fips_code (NaN if unmapped)."""
+    """Derive 'state' from fips_code, normalizing FIPS first.
+
+    ACPR public files (FY2020/FY2021) strip the leading zero from FIPS for states
+    01-09, so those codes arrive 10-digit instead of 11; pad to 11 so the 2-digit
+    state prefix is correct. No-op on FY2022 (already 11-digit). Corrects both
+    fips_code and the derived state.
+    """
     if "fips_code" in df.columns:
-        df["state"] = df["fips_code"].str[:2].map(STATE_FIPS)
+        fips = df["fips_code"].astype("string").str.strip()
+        fips = fips.mask(fips == "", pd.NA).str.zfill(11)
+        df["state"] = fips.str[:2].map(STATE_FIPS)
+        df["fips_code"] = fips.astype(object)
     else:
         df["state"] = pd.NA
+    return df
+
+
+def _null_sentinels(df):
+    """Replace documented CDFI Fund 'not reported / not applicable' codes with NaN.
+
+    Field-specific: for each (col, codes) in TLR_SENTINELS, only the codes the TLR Data
+    Point Guidance (Feb 2022) documents as not-reported for that field are nulled, matched
+    against the column's ACTUAL dtype. naics_code may arrive as str ("999999") or numeric
+    (999999) depending on era/cast — both are handled. Nulls cells to NaN only; never drops
+    rows. Expects canonical column names (call after reindex to TLR_CANONICAL).
+    """
+    for col, codes in TLR_SENTINELS.items():
+        if col not in df.columns:
+            continue
+        series = df[col]
+        if pd.api.types.is_numeric_dtype(series):
+            match = set(codes)
+        elif series.dtype == object or pd.api.types.is_string_dtype(series):
+            match = {str(c) for c in codes}
+        else:
+            print(f"[_null_sentinels] WARNING: {col} has unexpected dtype "
+                  f"{series.dtype!r}; matching both numeric and str forms of {codes}")
+            match = set(codes) | {str(c) for c in codes}
+        df[col] = series.mask(series.isin(match), np.nan)
     return df
 
 
@@ -78,14 +116,53 @@ class TLRLoader:
                              encoding="latin-1")
         print(f"Raw records: {len(df):,}")
 
-        df = standardize(df, TLR_COLUMNS, TLR_DTYPES,
-                         required_cols=["amount"])
-
-        df = _derive_state(df)
-
-        print(f"Clean records: {len(df):,}")
+        col_map = TLR_COLUMNS_BY_YEAR.get(year, TLR_COLUMNS)
+        df = standardize(df, col_map, TLR_DTYPES, required_cols=["amount"])
+        df = df.reindex(columns=TLR_CANONICAL)   # ensure all 61; NaN-fill era-specific (award_category for ACPR); drop strays
+        df = _null_sentinels(df)                  # field-specific not-reported codes → NaN; independent of _derive_state
+        df["source_release"] = f"FY{year}"
+        df = _derive_state(df)                    # adds 'state' from fips_code (already defined)
         self._df = df
         return df
+
+    def load_range(self, start: int, end: int, force: bool = False) -> pd.DataFrame:
+        """Load and stack all available TLR years in [start, end] (inclusive).
+
+        Frames are concatenated as-is (no dedup); use fiscal_year + source_release to
+        identify late-submission overlaps between releases.
+
+        Overlap & completeness guidance: releases overlap on fiscal_year — FY2022 (AMIS)
+        restates/expands prior-year (FY2021) data, so the same fiscal_year can appear in more
+        than one release. Filter by source_release and prefer the latest release for a given
+        fiscal_year; do NOT sum/aggregate the full stacked frame naively — that double-counts
+        restated rows. Field completeness (rate/term/NAICS especially) is era-dependent, so a
+        single statistic across the full frame is confounded by reporting era. See
+        docs/CANONICAL_SCHEMA.md.
+        """
+        years = [y for y in sorted(TLR_URLS) if start <= y <= end]
+        if not years:
+            raise ValueError(
+                f"No TLR data available in range {start}-{end}. "
+                f"Available years: {sorted(TLR_URLS)}"
+            )
+        frames = [self.load(year=y, force=force) for y in years]
+        df = pd.concat(frames, ignore_index=True)
+        self._df = df
+        self._year = None
+        print(f"Cumulative: {len(df):,} rows across {len(years)} releases {years}")
+        return df
+
+    def load_cumulative(self, force: bool = False) -> pd.DataFrame:
+        """Load and stack every available TLR year (no dedup). See load_range.
+
+        Overlap & completeness guidance: releases overlap on fiscal_year — FY2022 (AMIS)
+        restates/expands prior-year (FY2021) data; filter by source_release and prefer the
+        latest release for a given fiscal_year. Do NOT sum/aggregate the full frame naively
+        (double-counts restated rows); field completeness (rate/term/NAICS) is era-dependent.
+        See docs/CANONICAL_SCHEMA.md.
+        """
+        years = sorted(TLR_URLS)
+        return self.load_range(years[0], years[-1], force=force)
 
     def load_sample(self, n: int = 1000) -> pd.DataFrame:
         """

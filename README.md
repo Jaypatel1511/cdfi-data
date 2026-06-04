@@ -25,9 +25,14 @@ require significant cleaning before analysis. cdfi-data standardizes the entire 
 
     from cdfidata import TLRLoader, CLRLoader, AwardsLoader
 
-    # Load TLR transaction data (downloads & caches automatically)
+    # Load a single TLR fiscal year (downloads & caches automatically)
     tlr = TLRLoader()
     df = tlr.load(year=2022)
+
+    # Load the full cumulative TLR (FY2020–FY2022), stacked with provenance
+    cum = tlr.load_cumulative()
+    # ...or an explicit range:
+    cum = tlr.load_range(2020, 2022)
 
     # Filter to Illinois
     il = tlr.filter_state("IL")
@@ -42,6 +47,13 @@ require significant cleaning before analysis. cdfi-data standardizes the entire 
     # Export
     tlr.to_csv("cdfi_transactions.csv")
     tlr.to_sqlite("cdfi.db", table="tlr")
+
+**Caveat — cumulative frames stack overlapping releases.** `load_cumulative()` /
+`load_range()` concatenate releases with no dedup: each row carries a `source_release`
+column (`FY2020`/`FY2021`/`FY2022`), and releases overlap on `fiscal_year` (FY2022 restates
+and expands prior-year data). Filter by `source_release` and prefer the latest release for a
+given fiscal year — don't naively aggregate the full frame, or restated rows double-count.
+Field completeness (rate/term/NAICS) is also era-dependent. See `docs/CANONICAL_SCHEMA.md`.
 
 ---
 
