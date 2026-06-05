@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.1] — 2026-06-04
+
+### Fixed
+- TLRLoader.summary() printed "FYNone" for a single-year load_range(Y, Y); the
+  single-release header now falls back to the loaded source_release label (e.g. "FY2020").
+
+### Internal/CI
+- ci.yml actions SHA-pinned (checkout v4.3.1, setup-python v5.6.0) to match
+  release.yml; test_schema_doc_matches_canonical strengthened to verify the full
+  header->canonical mapping against schema.py.
+
 ## [0.3.0] — 2026-06-03
 
 ### Added
