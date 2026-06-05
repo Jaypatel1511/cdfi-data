@@ -112,6 +112,23 @@ def test_summary_single_release_unchanged(capsys):
     assert "caveat" not in out.lower()
 
 
+def test_summary_single_year_range_header(capsys):
+    """load_range(Y, Y) leaves self._year None; the single-release header must fall
+    back to the source_release label, not print 'FYNone'."""
+    loader = TLRLoader()
+    loader._df = pd.DataFrame({
+        "source_release": ["FY2020", "FY2020", "FY2020"],
+        "fiscal_year":    [2020, 2020, 2020],
+        "amount":         [100.0, 200.0, 300.0],
+        "state":          ["IL", "NY", "CA"],
+    })
+    loader._year = None
+    loader.summary()
+    out = capsys.readouterr().out
+    assert "TLR Data Summary — FY2020" in out
+    assert "FYNone" not in out
+
+
 def test_to_csv(tlr_loader, tmp_path):
     path = str(tmp_path / "tlr.csv")
     tlr_loader.to_csv(path)

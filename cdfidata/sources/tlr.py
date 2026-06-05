@@ -265,7 +265,13 @@ class TLRLoader:
         multi = "source_release" in df.columns and df["source_release"].nunique() > 1
 
         if not multi:
-            print(f"\nTLR Data Summary — FY{self._year}")
+            if self._year is not None:
+                label = f"FY{self._year}"
+            elif "source_release" in df.columns and df["source_release"].notna().any():
+                label = str(df["source_release"].dropna().iloc[0])   # already "FY2020"; do NOT re-prefix
+            else:
+                label = "TLR"
+            print(f"\nTLR Data Summary — {label}")
             print(f"  Total records:      {len(df):,}")
             print(f"  Total amount:       ${df['amount'].sum()/1e9:.2f}B")
             print(f"  Median loan size:   ${df['amount'].median():,.0f}")
