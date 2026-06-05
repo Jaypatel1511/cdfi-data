@@ -262,19 +262,73 @@ def test_load_range_empty_raises():
 
 
 def test_schema_doc_matches_canonical():
-    """Anti-drift guard (offline): every canonical column name must be documented in
-    docs/CANONICAL_SCHEMA.md. A renamed/removed canonical column with no doc update fails.
-
-    Uses a word-boundary match (\\bname\\b) rather than a plain substring test: some
-    canonical names are substrings of others (e.g. 'amount' inside 'original_amount' as
-    referenced in the sentinel section), so a naive `name in text` would mask real drift.
-    `_` is a regex word char, so \\bamount\\b does NOT match inside 'original_amount'.
+    """Anti-drift guard (offline): the "## Canonical mapping table" in docs/CANONICAL_SCHEMA.md
+    must reproduce the FULL header->canonical mapping defined in schema.py, not just the
+    canonical names. A renamed/removed canonical column, or a wrong AMIS/ACPR source header in
+    the doc, fails — catching mapping drift a name-presence check would miss.
     """
-    from cdfidata.utils.schema import TLR_CANONICAL
+    from cdfidata.utils.schema import TLR_CANONICAL, TLR_COLUMNS, ACPR_COLUMNS
     assert DOCS_CANONICAL.exists(), f"missing {DOCS_CANONICAL}"
-    text = DOCS_CANONICAL.read_text()
-    missing = [c for c in TLR_CANONICAL if not re.search(rf"\b{re.escape(c)}\b", text)]
-    assert not missing, f"canonical columns not documented in CANONICAL_SCHEMA.md: {missing}"
+    lines = DOCS_CANONICAL.read_text().splitlines()
+
+    # 1. Locate the "## Canonical mapping table" heading, then take the contiguous block
+    #    of table rows (lines starting with "|") that follows it.
+    heading_idx = next(
+        (i for i, ln in enumerate(lines) if ln.strip() == "## Canonical mapping table"),
+        None,
+    )
+    assert heading_idx is not None, "missing '## Canonical mapping table' heading in CANONICAL_SCHEMA.md"
+
+    table_rows = []
+    seen_table = False
+    for ln in lines[heading_idx + 1:]:
+        if ln.lstrip().startswith("|"):
+            seen_table = True
+            table_rows.append(ln)
+        elif seen_table:
+            break   # stop at the first non-"|" line once the table has started
+
+    # skip the column-header row and the |---| separator row
+    data_rows = []
+    for row in table_rows:
+        cells = [c.strip() for c in row.strip().strip("|").split("|")]
+        if all(set(c) <= {"-", ":"} and c for c in cells):
+            continue   # |---|---| separator row
+        data_rows.append(cells)
+    # first remaining row is the column-header row
+    data_rows = data_rows[1:]
+
+    doc_amis = {}
+    doc_acpr = {}
+    for cells in data_rows:
+        assert len(cells) == 4, f"expected 4 cells, got {len(cells)}: {cells}"
+        canonical, amis_header, acpr_header, _notes = cells
+        doc_amis[canonical] = amis_header
+        doc_acpr[canonical] = acpr_header
+
+    # 3. Invert the schema maps: canonical -> source header.
+    expected_amis = {v: k for k, v in TLR_COLUMNS.items()}
+    expected_acpr = {v: k for k, v in ACPR_COLUMNS.items()}
+    EM_DASH = {"—", "-", ""}
+
+    # 4. Assertions, each naming the offending column.
+    assert set(doc_amis) == set(TLR_CANONICAL), (
+        f"doc canonical set != TLR_CANONICAL; "
+        f"missing={set(TLR_CANONICAL) - set(doc_amis)}, extra={set(doc_amis) - set(TLR_CANONICAL)}"
+    )
+    for c in TLR_CANONICAL:
+        assert doc_amis[c] == expected_amis[c], (
+            f"{c}: doc AMIS header {doc_amis[c]!r} != schema {expected_amis[c]!r}"
+        )
+    for c in expected_acpr:
+        assert doc_acpr[c] == expected_acpr[c], (
+            f"{c}: doc ACPR header {doc_acpr[c]!r} != schema {expected_acpr[c]!r}"
+        )
+    for c in TLR_CANONICAL:
+        if c not in expected_acpr:   # AMIS-only canonical (award_category)
+            assert doc_acpr[c] in EM_DASH, (
+                f"{c}: AMIS-only column should show no ACPR header, got {doc_acpr[c]!r}"
+            )
 
 
 @pytest.mark.live
