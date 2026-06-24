@@ -6,11 +6,19 @@ import os
 import zipfile
 import requests
 from pathlib import Path
+from importlib.metadata import version, PackageNotFoundError
 
 from cdfidata.utils.schema import CACHE_DIR, TLR_URLS
 
+try:
+    _VERSION = version("cdfidata")
+except PackageNotFoundError:
+    _VERSION = "0.0.0"
+
 DEFAULT_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; cdfidata; +https://github.com/Jaypatel1511/cdfi-data)"
+    "User-Agent": f"cdfidata/{_VERSION} (+https://github.com/Jaypatel1511/cdfi-data)",
+    "Accept": "application/zip, application/octet-stream, */*",
+    "Accept-Language": "en-US,en;q=0.9",
 }
 
 

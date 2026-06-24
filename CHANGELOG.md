@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.2] — 2026-06-24
+
+### Fixed
+- User-Agent for CDFI Fund downloads aligned to the portfolio identifying-token
+  standard (cdfidata/<ver> (+repo) + Accept/Accept-Language), replacing a
+  browser-mimic "Mozilla/5.0 (compatible; cdfidata…)" string. A browser UA over
+  a python-requests TLS stack is a fingerprint mismatch that can 403 on
+  RESIDENTIAL connections. NOT a cloud/403 fix — cdfifund.gov does not block
+  datacenter IPs (one-time cached bulk download).
+
+### Internal/CI
+- ci.yml now runs pytest with -m "not live" so cloud runners no longer execute
+  the live cdfifund.gov tests (false-red / fingerprint avoidance). release.yml's
+  test-wheel job already deselected live; unchanged.
+
 ## [0.3.1] — 2026-06-04
 
 ### Fixed

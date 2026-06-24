@@ -145,28 +145,44 @@ def test_to_sqlite(tlr_loader, tmp_path):
 
 
 def test_download_file_sends_user_agent(monkeypatch, tmp_path):
-    captured = {}
+    captured = {"calls": 0}
 
     class FakeResponse:
-        headers = {"content-length": "0"}
+        status_code = 200
+        headers = {}
 
         def raise_for_status(self):
-            pass
+            return None
 
         def iter_content(self, chunk_size=8192):
             return iter([])
 
     def fake_get(url, **kwargs):
+        captured["calls"] += 1
         captured["headers"] = kwargs.get("headers")
         return FakeResponse()
 
+    # Point the cache at tmp_path so no real ~/.cdfidata write happens, and mock
+    # one layer deeper than download_file (at requests.get) so we actually see
+    # the headers that go out over the wire.
     monkeypatch.setattr(downloader, "get_cache_dir", lambda: tmp_path)
+    monkeypatch.setattr(downloader, "cache_path", lambda filename: tmp_path / filename)
     monkeypatch.setattr(downloader.requests, "get", fake_get)
 
     downloader.download_file("https://example.com/x.zip", "x.zip", force=True)
 
-    assert captured["headers"] is not None
-    assert "User-Agent" in captured["headers"]
+    # The patched get must actually have fired — guard against a vacuous pass.
+    assert captured["calls"] > 0
+    headers = captured["headers"]
+    assert headers is not None
+    ua = headers["User-Agent"]
+    # Identifying-token standard, not a browser-mimic string. Assert the PREFIX,
+    # not a specific version: CI runs pytest without installing cdfidata, so
+    # version("cdfidata") raises PackageNotFoundError -> UA is "cdfidata/0.0.0".
+    assert ua.startswith("cdfidata/")
+    assert "Mozilla" not in ua
+    assert "Accept" in headers
+    assert "Accept-Language" in headers
 
 
 def test_derive_state_from_fips():

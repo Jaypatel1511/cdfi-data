@@ -28,4 +28,4 @@ jobs:
 
     - name: Run tests
       run: |
-        PYTHONPATH=. pytest tests/ -v
+        PYTHONPATH=. pytest tests/ -v -m "not live"
