@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.0] — 2026-06-24
+
+### Added
+- FY2018 and FY2019 TLR coverage (ACPR schema, mapped via `ACPR_COLUMNS`). Both
+  releases are the byte-identical 60-column ACPR header set — 0 columns unmapped —
+  so they load through the existing map with no new schema work. `award_category`
+  is the only canonical-absent field (AMIS-only), reindexed to NaN as with
+  FY2020/FY2021. A live header-schema regression (`test_real_headers_map_live`)
+  now locks FY2018/FY2019 headers == the ACPR set, catching any future
+  CDFI Fund re-release that silently changes the schema.
+
+### Changed
+- `load_cumulative()` / `load_range()` now span FY2018–FY2022 (previously
+  FY2020–FY2022) — additive coverage; downstream row counts increase. Each ACPR
+  release carries prior-year late submissions (documented overlap; the FY2018
+  release reports FY2017 + FY2018, FY2019 reports FY2018 + FY2019, etc.), so the
+  same `fiscal_year` is restated across consecutive releases — `source_release`
+  disambiguates. Overlap guidance in the loader docstrings and
+  `docs/CANONICAL_SCHEMA.md` generalized from "FY2022 restates FY2021" to the
+  whole ACPR series, with a per-release reconciliation table.
+
 ## [0.3.2] — 2026-06-24
 
 ### Fixed

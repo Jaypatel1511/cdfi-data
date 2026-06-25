@@ -168,7 +168,10 @@ TLR_DTYPES = {
 }
 
 # Year → column map selector and the single-source-of-truth canonical column order.
-TLR_COLUMNS_BY_YEAR = {2020: ACPR_COLUMNS, 2021: ACPR_COLUMNS, 2022: TLR_COLUMNS}
+TLR_COLUMNS_BY_YEAR = {
+    2018: ACPR_COLUMNS, 2019: ACPR_COLUMNS,
+    2020: ACPR_COLUMNS, 2021: ACPR_COLUMNS, 2022: TLR_COLUMNS,
+}
 
 TLR_CANONICAL = [
     "org_id", "transaction_id", "fiscal_year", "amount", "fips_code", "investee_type",
@@ -296,6 +299,8 @@ AWARDS_DTYPES = {
 CDFI_FUND_BASE = "https://www.cdfifund.gov"
 
 TLR_URLS = {
+    2018: "https://www.cdfifund.gov/system/files/2021-05/FY2018_Data_Documentation_Instruction.zip",
+    2019: "https://www.cdfifund.gov/system/files/2021-05/FY2019_Data_Documentation_Instruction.zip",
     2020: "https://www.cdfifund.gov/system/files/2022-06/FY2020_Data_Documentation_Instruction.zip",
     2021: "https://www.cdfifund.gov/system/files/2023-07/FY2021_Data_Documentation_Instruction.zip",
     2022: "https://www.cdfifund.gov/media/8016726/download?inline",

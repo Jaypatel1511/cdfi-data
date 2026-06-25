@@ -266,7 +266,21 @@ def test_real_headers_map_live():
         cols_by_year[year] = cols
         missing = [c for c in cols if c.upper() not in TLR_COLUMNS_BY_YEAR[year]]
         assert not missing, f"FY{year} headers not in map: {missing}"
-    assert set(cols_by_year[2020]) == set(cols_by_year[2021]), "FY2020 != FY2021 header set"
+    # FY2018/2019/2020/2021 are all the 60-col ACPR schema — one header set. This locks the
+    # "FY2018/19 == ACPR schema" assumption: a future CDFI Fund re-release that changed the
+    # schema would fail here before it could silently mis-map.
+    acpr_years = [2018, 2019, 2020, 2021]
+    base = set(cols_by_year[2018])
+    for y in acpr_years:
+        assert set(cols_by_year[y]) == base, (
+            f"FY{y} header set differs from FY2018 ACPR set: "
+            f"{set(cols_by_year[y]) ^ base}"
+        )
+    # every ACPR-era header is a key in ACPR_COLUMNS (0 unmapped), case-insensitively
+    from cdfidata.utils.schema import ACPR_COLUMNS
+    for y in (2018, 2019):
+        unmapped = [c for c in cols_by_year[y] if c.upper() not in ACPR_COLUMNS]
+        assert not unmapped, f"FY{y} headers not keys in ACPR_COLUMNS: {unmapped}"
 
 
 def test_load_range_empty_raises():
@@ -353,7 +367,8 @@ def test_cumulative_lossless():
     No hardcoded row counts — the CDFI Fund restates data, so counts are data, not spec.
     Years are the fixed scope; counts come from the loader at run time.
     """
-    years = [2020, 2021, 2022]
+    from cdfidata.utils.schema import TLR_URLS
+    years = sorted(TLR_URLS)               # scope follows TLR_URLS, not a hardcoded list
     loader = TLRLoader()
     per_year = {y: len(loader.load(year=y)) for y in years}
     cum = TLRLoader().load_cumulative()

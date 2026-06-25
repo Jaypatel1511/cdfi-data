@@ -10,12 +10,14 @@ eras, regardless of which source release a year came from:
 
 - **AMIS** (Salesforce export) — FY2022. Headers are uppercased + truncated to 32 chars
   by the export; mapped in `TLR_COLUMNS`.
-- **ACPR** — FY2020 / FY2021. Headers mapped in `ACPR_COLUMNS`.
+- **ACPR** — FY2018 / FY2019 / FY2020 / FY2021. One byte-identical 60-column header set
+  across all four releases; mapped in `ACPR_COLUMNS`.
 
-`TLR_COLUMNS_BY_YEAR` selects the map per year: `{2020: ACPR, 2021: ACPR, 2022: AMIS}`.
+`TLR_COLUMNS_BY_YEAR` selects the map per year:
+`{2018: ACPR, 2019: ACPR, 2020: ACPR, 2021: ACPR, 2022: AMIS}`.
 
 Each canonical column appears in both eras **except `award_category`, which is AMIS-only**
-(ACPR has no equivalent header — shown as "—" below; reindexed to NaN for FY2020/FY2021).
+(ACPR has no equivalent header — shown as "—" below; reindexed to NaN for all ACPR years).
 
 ## Provenance columns
 
@@ -24,7 +26,7 @@ In addition to the 61 canonical columns, `load()` adds two provenance columns:
 | Column | Meaning |
 |---|---|
 | `source_release` | The release a row came from, labelled `FY{year}` (e.g. `FY2020`, `FY2022`). Use this — not `fiscal_year` — to disambiguate overlapping releases. |
-| `state` | Two-letter USPS state, derived from `fips_code` (FIPS state prefix). ACPR FY2020/FY2021 strip the FIPS leading zero; `fips_code` is zero-padded to 11 and `state` corrected. |
+| `state` | Two-letter USPS state, derived from `fips_code` (FIPS state prefix). ACPR releases (FY2018–FY2021) strip the FIPS leading zero; `fips_code` is zero-padded to 11 and `state` corrected. |
 
 **Output is 63 columns: 61 canonical + 2 provenance (`source_release`, `state`).**
 
@@ -35,12 +37,41 @@ In addition to the 61 canonical columns, `load()` adds two provenance columns:
   FY2021, 0 in FY2022). Do not use `transaction_id` as a join, merge, or dedup key; treat it
   as a non-unique identifier only.
 
+## Release overlap & per-release reconciliation
+
+Releases overlap on `fiscal_year`. **Every ACPR release carries its headline fiscal year PLUS
+prior-year late submissions**, and the AMIS FY2022 release likewise restates/expands FY2021. So
+the same `fiscal_year` is **restated across consecutive releases** and can appear in more than one.
+`load_cumulative()` / `load_range()` stack releases with **no dedup** — provenance is preserved in
+`source_release`, not collapsed.
+
+Consequences for analysis:
+- **Disambiguate by `source_release`, not `fiscal_year`.** Prefer the latest release for a given
+  fiscal year; do **not** sum/aggregate the full stacked frame naively — that double-counts
+  restated rows.
+- Field completeness (rate/term/NAICS especially) is era-dependent, so a single statistic across
+  the full frame is confounded by reporting era.
+
+Per-release reconciliation (rows by `source_release`, decomposed by the `fiscal_year` values each
+release reports — confirmed by loading, not asserted):
+
+| `source_release` | Era | Total rows | fiscal_year breakdown |
+|---|---|---|---|
+| FY2018 | ACPR | 170,671 | FY2017: 88,560 · FY2018: 82,111 |
+| FY2019 | ACPR | 296,451 | FY2018: 98,401 · FY2019: 198,050 |
+| FY2020 | ACPR | 290,485 | (headline FY2020 + prior-year late submissions) |
+| FY2021 | ACPR | 246,684 | (headline FY2021 + prior-year late submissions) |
+| FY2022 | AMIS | 1,002,505 | (headline FY2022 + restated/expanded prior years) |
+
+`load_cumulative()` stacks all five releases losslessly: **2,006,796 rows total** (= sum of the
+per-release counts above; restated fiscal years are intentionally retained across vintages).
+
 ## Canonical mapping table
 
 One row per canonical column. "AMIS source header" is the key in `TLR_COLUMNS` (FY2022);
-"ACPR source header" is the key in `ACPR_COLUMNS` (FY2020/FY2021), "—" where AMIS-only.
+"ACPR source header" is the key in `ACPR_COLUMNS` (FY2018–FY2021), "—" where AMIS-only.
 
-| Canonical name | AMIS source header (FY2022) | ACPR source header (FY2020/FY2021) | Notes |
+| Canonical name | AMIS source header (FY2022) | ACPR source header (FY2018–FY2021) | Notes |
 |---|---|---|---|
 | org_id | ORG_ID | ORG_ID | |
 | transaction_id | TRANS_ID | TRANS_ID | |

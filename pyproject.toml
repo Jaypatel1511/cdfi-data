@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cdfidata"
-version = "0.3.2"
+version = "0.4.0"
 description = "ETL pipeline for US Treasury CDFI Fund public datasets — TLR, CLR, and Awards data"
 readme = "README.md"
 requires-python = ">=3.9"

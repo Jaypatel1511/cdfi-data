@@ -131,9 +131,11 @@ class TLRLoader:
         Frames are concatenated as-is (no dedup); use fiscal_year + source_release to
         identify late-submission overlaps between releases.
 
-        Overlap & completeness guidance: releases overlap on fiscal_year — FY2022 (AMIS)
-        restates/expands prior-year (FY2021) data, so the same fiscal_year can appear in more
-        than one release. Filter by source_release and prefer the latest release for a given
+        Overlap & completeness guidance: releases overlap on fiscal_year. EVERY ACPR release
+        carries its headline year PLUS prior-year late submissions (e.g. the FY2019 release
+        holds FY2018 + FY2019 rows), and the AMIS FY2022 release likewise restates/expands
+        FY2021. So the same fiscal_year is RESTATED across consecutive releases and can appear
+        in more than one. Filter by source_release and prefer the latest release for a given
         fiscal_year; do NOT sum/aggregate the full stacked frame naively — that double-counts
         restated rows. Field completeness (rate/term/NAICS especially) is era-dependent, so a
         single statistic across the full frame is confounded by reporting era. See
@@ -155,11 +157,12 @@ class TLRLoader:
     def load_cumulative(self, force: bool = False) -> pd.DataFrame:
         """Load and stack every available TLR year (no dedup). See load_range.
 
-        Overlap & completeness guidance: releases overlap on fiscal_year — FY2022 (AMIS)
-        restates/expands prior-year (FY2021) data; filter by source_release and prefer the
-        latest release for a given fiscal_year. Do NOT sum/aggregate the full frame naively
-        (double-counts restated rows); field completeness (rate/term/NAICS) is era-dependent.
-        See docs/CANONICAL_SCHEMA.md.
+        Overlap & completeness guidance: releases overlap on fiscal_year. EVERY ACPR release
+        carries its headline year PLUS prior-year late submissions, and the AMIS FY2022 release
+        restates/expands FY2021, so the same fiscal_year is restated across consecutive
+        releases. Filter by source_release and prefer the latest release for a given
+        fiscal_year. Do NOT sum/aggregate the full frame naively (double-counts restated rows);
+        field completeness (rate/term/NAICS) is era-dependent. See docs/CANONICAL_SCHEMA.md.
         """
         years = sorted(TLR_URLS)
         return self.load_range(years[0], years[-1], force=force)
