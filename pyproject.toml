@@ -19,7 +19,11 @@ dependencies = [
 parquet = ["pyarrow>=7.0.0"]
 
 [project.urls]
-Homepage = "https://github.com/Jaypatel1511/cdfi-data"
+Homepage = "https://jaypatel1511.github.io/cdfi-superpowers/"
+Repository = "https://github.com/Jaypatel1511/cdfi-data"
+Documentation = "https://github.com/Jaypatel1511/cdfi-data#readme"
+Issues = "https://github.com/Jaypatel1511/cdfi-data/issues"
+Changelog = "https://github.com/Jaypatel1511/cdfi-data/blob/main/CHANGELOG.md"
 
 [tool.pytest.ini_options]
 markers = ["live: hits live CDFI Fund endpoints (deselect with -m 'not live')"]
